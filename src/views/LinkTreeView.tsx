@@ -18,8 +18,9 @@ export default function LinkTreeView() {
     onError: (error) => {
       toast.error(error.message)
     },
-    onSuccess: () => {
-      toast.success('Actualizado Correctamente')
+    onSuccess: (data) => {
+      toast.success('Actualizado correctamente')
+      queryClient.setQueryData(['user'], data) // actualiza la caché con los datos del backend
     }
   })
 
@@ -41,99 +42,51 @@ export default function LinkTreeView() {
     setDevTreeLinks(updatedLinks)
   }
 
-  const links: SocialNetwork[] = JSON.parse(user.links)
-
   const handleEnableLink = (socialNetwork: string) => {
     const updatedLinks = devTreeLinks.map(link => {
       if (link.name === socialNetwork) {
         if (isValidUrl(link.url)) {
           return { ...link, enabled: !link.enabled }
         } else {
-          toast.error('URL no Válida')
+          toast.error('URL no válida')
         }
       }
       return link
     })
 
     setDevTreeLinks(updatedLinks)
+  }
 
-    let updatedItems: SocialNetwork[] = []
-    const selectedSocialNetwork = updatedLinks.find(link => link.name === socialNetwork)
-    if (selectedSocialNetwork?.enabled) {
-      const id = links.filter(link => link.id).length + 1
-      if (links.some(link => link.name === socialNetwork)) {
-        updatedItems = links.map(link => {
-          if (link.name === socialNetwork) {
-            return {
-              ...link,
-              enabled: true,
-              id
-            }
-          } else {
-            return link
-          }
-        })
-      } else {
-        const newItem = {
-          ...selectedSocialNetwork,
-          id
-        }
-        updatedItems = [...links, newItem]
-      }
-    } else {
-      const indexToUpdate = links.findIndex(link => link.name === socialNetwork)
-      updatedItems = links.map(link => {
-        if (link.name === socialNetwork) {
-          return {
-            ...link,
-            id: 0,
-            enabled: false
-          }
-        } else if (link.id > indexToUpdate && (indexToUpdate !== 0 && link.id === 1)) {
-          return {
-            ...link,
-            id: link.id - 1
-          }
-        } else {
-          return link
-        }
-      })
+  const handleGuardar = () => {
+    const updatedLinks: SocialNetwork[] = devTreeLinks.map((link, index) => ({
+      ...link,
+      id: index + 1 // nuevo ID
+    }))
+
+    const updatedUser: User = {
+      ...user,
+      links: JSON.stringify(updatedLinks)
     }
 
-    // Actualizar solo en caché (por consistencia local)
-    queryClient.setQueryData(['user'], (prevData: User) => {
-      return {
-        ...prevData,
-        links: JSON.stringify(updatedItems)
-      }
-    })
+    mutate(updatedUser)
   }
 
   return (
-    <>
-      <div className="space-y-5">
-        {devTreeLinks.map(item => (
-          <DevTreeInput
-            key={item.name}
-            item={item}
-            handleUrlChange={handleUrlChange}
-            handleEnableLink={handleEnableLink}
-          />
-        ))}
-        <button
-          className="bg-cyan-400 p-2 text-lg w-full uppercase text-slate-600 rounded-lg font-bold"
-          onClick={() => {
-            const userToUpdate = {
-              ...user,
-              links: JSON.stringify(devTreeLinks)
-            }
-            mutate(userToUpdate)
-          }}
-        >
-          Guardar Cambios
-        </button>
-      </div>
-    </>
+    <div className="space-y-5">
+      {devTreeLinks.map(item => (
+        <DevTreeInput
+          key={item.name}
+          item={item}
+          handleUrlChange={handleUrlChange}
+          handleEnableLink={handleEnableLink}
+        />
+      ))}
+      <button
+        className="bg-cyan-400 p-2 text-lg w-full uppercase text-slate-600 rounded-lg font-bold"
+        onClick={handleGuardar}
+      >
+        Guardar Cambios
+      </button>
+    </div>
   )
 }
-
